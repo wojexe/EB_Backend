@@ -25,11 +25,11 @@ func (h *CartHandler) RegisterRoutes(e *echo.Echo) error {
 
 	carts.POST("/:id/checkout", h.DeleteCart)
 
-	cart_products := carts.Group("/:id/products")
-	cart_products.GET("", h.GetCartProducts)
-	cart_products.POST("/:productId", h.AddProductToCart)
-	cart_products.DELETE("/:productId", h.RemoveProductFromCart)
-	cart_products.DELETE("", h.ClearCart)
+	cartProducts := carts.Group("/:id/products")
+	cartProducts.GET("", h.GetCartProducts)
+	cartProducts.POST("/:productId", h.AddProductToCart)
+	cartProducts.DELETE("/:productId", h.RemoveProductFromCart)
+	cartProducts.DELETE("", h.ClearCart)
 
 	return nil
 }
@@ -61,7 +61,7 @@ func (h *CartHandler) GetCart(c echo.Context) error {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.NoContent(http.StatusNotFound)
 		} else {
-			log.Printf("error getting cart: %v", err)
+			log.Printf(ErrGettingCart, err)
 			return c.NoContent(500)
 		}
 	}
@@ -99,7 +99,7 @@ func (h *CartHandler) DeleteCart(c echo.Context) error {
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.JSON(http.StatusNotFound, map[string]string{
-				"error": "Cart not found",
+				"error": CartNotFound,
 			})
 		}
 
@@ -138,13 +138,13 @@ func (h *CartHandler) AddProductToCart(c echo.Context) error {
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.JSON(http.StatusNotFound, map[string]string{
-				"error": "Cart not found",
+				"error": CartNotFound,
 			})
 		}
 
-		log.Printf("error getting cart: %v", err)
+		log.Printf(ErrGettingCart, err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to add product to cart",
+			"error": FailedAddToCart,
 		})
 	}
 
@@ -159,7 +159,7 @@ func (h *CartHandler) AddProductToCart(c echo.Context) error {
 
 		log.Printf("error getting product: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to add product to cart",
+			"error": FailedAddToCart,
 		})
 	}
 
@@ -167,13 +167,13 @@ func (h *CartHandler) AddProductToCart(c echo.Context) error {
 	if err != nil {
 		log.Printf("error adding product to cart: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to add product to cart",
+			"error": FailedAddToCart,
 		})
 	}
 
 	cart, err := h.repos.Carts.GetByID(data.ID)
 	if err != nil {
-		log.Printf("error getting updated cart: %v", err)
+		log.Printf(ErrUpdatedCart, err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Product added, but failed to retrieve updated cart",
 		})
@@ -199,11 +199,11 @@ func (h *CartHandler) RemoveProductFromCart(c echo.Context) error {
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.JSON(http.StatusNotFound, map[string]string{
-				"error": "Cart not found",
+				"error": CartNotFound,
 			})
 		}
 
-		log.Printf("error getting cart: %v", err)
+		log.Printf(ErrGettingCart, err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Failed to remove product from cart",
 		})
@@ -219,7 +219,7 @@ func (h *CartHandler) RemoveProductFromCart(c echo.Context) error {
 
 	cart, err := h.repos.Carts.GetByID(data.ID)
 	if err != nil {
-		log.Printf("error getting updated cart: %v", err)
+		log.Printf(ErrUpdatedCart, err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Product removed, but failed to retrieve updated cart",
 		})
@@ -243,7 +243,7 @@ func (h *CartHandler) GetCartProducts(c echo.Context) error {
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.JSON(http.StatusNotFound, map[string]string{
-				"error": "Cart not found",
+				"error": CartNotFound,
 			})
 		}
 
@@ -271,7 +271,7 @@ func (h *CartHandler) ClearCart(c echo.Context) error {
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.JSON(http.StatusNotFound, map[string]string{
-				"error": "Cart not found",
+				"error": CartNotFound,
 			})
 		}
 
@@ -283,7 +283,7 @@ func (h *CartHandler) ClearCart(c echo.Context) error {
 
 	cart, err := h.repos.Carts.GetByID(data.ID)
 	if err != nil {
-		log.Printf("error getting updated cart: %v", err)
+		log.Printf(ErrUpdatedCart, err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Cart cleared, but failed to retrieve updated cart",
 		})
@@ -291,3 +291,11 @@ func (h *CartHandler) ClearCart(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, cart)
 }
+
+const (
+	ErrGettingCart = "error getting cart: %v"
+	ErrUpdatedCart = "error getting updated cart: %v"
+
+	CartNotFound    = "Cart not found"
+	FailedAddToCart = "Failed to add product to cart"
+)

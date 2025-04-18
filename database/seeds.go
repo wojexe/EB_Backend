@@ -9,15 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// Seed populates the database with example data
-func Seed(db *gorm.DB) error {
-	// Clear existing data
-	db.Exec("DELETE FROM cart_products")
-	db.Exec("DELETE FROM products")
-	db.Exec("DELETE FROM categories")
-	db.Exec("DELETE FROM carts")
-
-	// Create categories
+func createCategories(db *gorm.DB) ([]models.Category, error) {
 	categories := []models.Category{
 		{Name: "Electronics"},
 		{Name: "Clothing"},
@@ -28,33 +20,34 @@ func Seed(db *gorm.DB) error {
 
 	for i := range categories {
 		if err := db.Create(&categories[i]).Error; err != nil {
-			return err
+			return nil, err
 		}
 	}
+	return categories, nil
+}
 
-	// Create products
+func createProducts(db *gorm.DB, categories []models.Category) ([]models.Product, error) {
 	products := make([]models.Product, 0)
 	for _, category := range categories {
-		// Create 5-10 products per category
-		numProducts := rand.Intn(6) + 5
+		numProducts := rand.Intn(6) + 5 // 5-10 products per category
 		for i := 0; i < numProducts; i++ {
-			// Create price between $5.99 and $999.99
 			price := decimal.NewFromFloat(float64(rand.Intn(99400)+599) / 100)
-
 			product := models.Product{
 				Name:       faker.Word() + " " + faker.Word(),
 				Price:      price,
 				CategoryID: &category.ID,
 			}
 			if err := db.Create(&product).Error; err != nil {
-				return err
+				return nil, err
 			}
 			products = append(products, product)
 		}
 	}
+	return products, nil
+}
 
-	// Create carts
-	for i := 0; i < 5; i++ {
+func createCarts(db *gorm.DB, products []models.Product, numCarts int) error {
+	for i := 0; i < numCarts; i++ {
 		cart := models.Cart{}
 		if err := db.Create(&cart).Error; err != nil {
 			return err
@@ -62,7 +55,7 @@ func Seed(db *gorm.DB) error {
 
 		// Add random products to cart (1-5 products)
 		numProductsInCart := rand.Intn(5) + 1
-		cartProducts := make([]models.Product, 0)
+		cartProducts := make([]models.Product, 0, numProductsInCart)
 
 		for j := 0; j < numProductsInCart; j++ {
 			randomProduct := products[rand.Intn(len(products))]
@@ -73,11 +66,35 @@ func Seed(db *gorm.DB) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func Seed(db *gorm.DB) error {
+	db.Exec("DELETE FROM cart_products")
+	db.Exec("DELETE FROM products")
+	db.Exec("DELETE FROM categories")
+	db.Exec("DELETE FROM carts")
+
+	// Create categories
+	categories, err := createCategories(db)
+	if err != nil {
+		return err
+	}
+
+	// Create products
+	products, err := createProducts(db, categories)
+	if err != nil {
+		return err
+	}
+
+	// Create carts
+	if err := createCarts(db, products, 5); err != nil {
+		return err
+	}
 
 	return nil
 }
 
-// GetRandomProducts returns a specified number of random products
 func GetRandomProducts(db *gorm.DB, count int) ([]models.Product, error) {
 	var products []models.Product
 	err := db.Order("RANDOM()").Limit(count).Find(&products).Error
