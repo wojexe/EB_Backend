@@ -31,7 +31,9 @@ func Initialize(env environment.Environment) *gorm.DB {
 	}
 
 	if env.ENV == environment.Development && os.Getenv("SEED") == "true" {
-		Seed(db)
+		if err := Seed(db); err != nil {
+			panic(err)
+		}
 	}
 
 	return db

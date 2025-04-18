@@ -28,7 +28,9 @@ func Initialize(handlers []handlers.Handler, env environment.Environment) Server
 	configureMiddleware(e, env)
 
 	for _, handler := range handlers {
-		handler.RegisterRoutes(e)
+		if err := handler.RegisterRoutes(e); err != nil {
+			panic(err)
+		}
 	}
 
 	return Server{echo: e}
